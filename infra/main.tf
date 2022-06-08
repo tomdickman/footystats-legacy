@@ -24,3 +24,7 @@ provider "aws" {
 resource "aws_ecr_repository" "footystats_web_ecr_repo" {
   name           = "footystats_web_ecr_repo"
 }
+
+resource "aws_ecs_cluster" "footystats_cluster" {
+  name = "footystats_cluster"
+}
