@@ -6,3 +6,8 @@
 #.pnp.*
 
 .editorconfig
+
+# Do not store terraform state
+*/.terraform/
+*/.terraform.*
+*/terraform.*
