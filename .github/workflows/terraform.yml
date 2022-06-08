@@ -8,8 +8,35 @@ on:
 
 jobs:
   terraform:
-    name: "Terraform"
+    name: Terraform
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: HashiCorp - Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Initialize Terraform
+        run: |
+          cd infra
+          terraform init
+
+      - name: Plan Terraform
+        id: plan
+        run: |
+          cd infra
+          terraform plan
+
+      - name: Apply Terraform
+        if: steps.plan.outcome == 'success' && github.event_name == 'push'
+        run: |
+          cd infra
+          terraform apply
