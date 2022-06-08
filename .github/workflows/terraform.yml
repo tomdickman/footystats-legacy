@@ -34,3 +34,9 @@ jobs:
         run: |
           cd infra
           terraform plan
+
+      - name: Apply Terraform
+        if: steps.plan.outcome == 'success' && github.event_name == 'push'
+        run: |
+          cd infra
+          terraform apply
