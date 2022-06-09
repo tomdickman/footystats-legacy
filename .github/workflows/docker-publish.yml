@@ -1,4 +1,4 @@
-name: Deploy to ECR
+name: Docker Publish
 
 on:
   push:
