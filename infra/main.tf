@@ -69,6 +69,7 @@ resource "aws_ecs_service" "footystats_web_service" {
   network_configuration {
     subnets          = ["${aws_default_subnet.default_subnet_a.id}", "${aws_default_subnet.default_subnet_b.id}", "${aws_default_subnet.default_subnet_c.id}"]
     assign_public_ip = true # Providing our containers with public IPs
+    security_groups  = ["${aws_security_group.footystats_web_service_security_group.id}"] # Setting the security group
   }
 }
 
