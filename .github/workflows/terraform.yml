@@ -33,10 +33,11 @@ jobs:
         id: plan
         run: |
           cd infra
-          terraform plan
+          terraform plan -input=false -out=tfplan
+          terraform show tfplan
 
       - name: Apply Terraform
         if: steps.plan.outcome == 'success' && github.event_name == 'push'
         run: |
           cd infra
-          terraform apply
+          terraform apply -input=false tfplan
