@@ -165,6 +165,7 @@ resource "aws_lb_target_group" "footystats_web_target_group" {
   health_check {
     matcher = "200,301,302"
     path = "/"
+    interval = 60
     timeout = 30
   }
 }
