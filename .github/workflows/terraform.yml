@@ -1,9 +1,11 @@
-name: "Terraform"
+name: Terraform
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - Docker Publish
+    types:
+      - completed
   pull_request:
 
 jobs:
