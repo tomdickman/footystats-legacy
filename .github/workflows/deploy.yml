@@ -1,11 +1,15 @@
-name: Terraform
+name: Deploy
 
 on:
-  pull_request:
+  workflow_run:
+    workflows:
+      - Docker Publish
+    types:
+      - completed
 
 jobs:
-  terraform:
-    name: Terraform
+  deploy:
+    name: deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,3 +36,9 @@ jobs:
           cd infra
           terraform plan -input=false -out=tfplan
           terraform show tfplan
+
+      - name: Apply Terraform
+        if: steps.plan.outcome == 'success'
+        run: |
+          cd infra
+          terraform apply -input=false tfplan
