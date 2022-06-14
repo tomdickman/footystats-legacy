@@ -145,6 +145,13 @@ resource "aws_alb" "footystats_web_alb" {
 # Creating a security group for the load balancer:
 resource "aws_security_group" "footystats_web_alb_security_group" {
   ingress {
+    from_port   = 443 # Allowing traffic in from port 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Allowing traffic in from all sources
+  }
+
+  ingress {
     from_port   = 80 # Allowing traffic in from port 80
     to_port     = 80
     protocol    = "tcp"
@@ -173,14 +180,35 @@ resource "aws_lb_target_group" "footystats_web_target_group" {
   }
 }
 
+# Register a forwarding rule for HTTPS from ALB to ECS through target group.
+resource "aws_lb_listener" "footystats_web_https_listener" {
+  load_balancer_arn = aws_alb.footystats_web_alb.arn # Referencing our load balancer
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08" # The default policy
+  certificate_arn   = aws_acm_certificate.footystats_web_cert.arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.footystats_web_target_group.arn # Referencing our target group
+  }
+}
+
+
 # Register a forwarding rule for HTTP from ALB to ECS through target group.
 resource "aws_lb_listener" "footystats_web_http_listener" {
   load_balancer_arn = aws_alb.footystats_web_alb.arn # Referencing our load balancer
   port              = "80"
   protocol          = "HTTP"
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.footystats_web_target_group.arn # Referencing our target group
+    type = "redirect"
+    redirect {
+      host        = "#{host}"
+      path        = "/#{path}"
+      query       = "#{query}"
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -191,26 +219,37 @@ data "aws_route53_zone" "aflfootystats_hosted_zone" {
 }
 
 resource "aws_acm_certificate" "footystats_web_cert" {
-  domain_name       = "*.aflfootystats.com"
-  validation_method = "DNS"
+  domain_name               = "www.aflfootystats.com"
+  validation_method         = "DNS"
+  subject_alternative_names = ["aflfootystats.com"]
   lifecycle {
     create_before_destroy = true
   }
 }
 
-# Add a record pointing to our cert for TLS
+# Add a records pointing to our cert for TLS
 resource "aws_route53_record" "footystats_web_cert_record" {
-  zone_id = data.aws_route53_zone.aflfootystats_hosted_zone.zone_id
-  name    = one(aws_acm_certificate.footystats_web_cert.domain_validation_options).resource_record_name
-  records = [one(aws_acm_certificate.footystats_web_cert.domain_validation_options).resource_record_value]
-  type    = one(aws_acm_certificate.footystats_web_cert.domain_validation_options).resource_record_type
+  zone_id         = data.aws_route53_zone.aflfootystats_hosted_zone.zone_id
+  allow_overwrite = true
+
+  for_each = {
+    for dvo in aws_acm_certificate.footystats_web_cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  name    = each.value.name
+  records = [each.value.record]
   ttl     = 60
+  type    = each.value.type
 }
 
 # This tells terraform to cause the route53 validation to happen
 resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.footystats_web_cert.arn
-  validation_record_fqdns = [aws_route53_record.footystats_web_cert_record.fqdn]
+  validation_record_fqdns = [for record in aws_route53_record.footystats_web_cert_record : record.fqdn]
 }
 
 # Redirect all traffic to the ALB
