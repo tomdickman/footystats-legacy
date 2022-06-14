@@ -1,0 +1,18 @@
+services:
+  web:
+    build: ./packages/web
+    ports:
+      - 80:80
+    depends_on:
+      - dynamo
+    environment:
+      - AWS_DYNAMODB_ENDPOINT=http://dynamo:8000
+    volumes:
+      - ./packages/web:/app
+  dynamo:
+    image: amazon/dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/"
+    ports:
+      - 8000:8000
+    volumes:
+      - ./dynamodb-data:/home/dynamodblocal/data
