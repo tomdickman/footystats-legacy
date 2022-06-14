@@ -212,3 +212,15 @@ resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.footystats_web_cert.arn
   validation_record_fqdns = [aws_route53_record.footystats_web_cert_record.fqdn]
 }
+
+# Redirect all traffic to the ALB
+resource "aws_route53_record" "footystats_web_record" {
+  zone_id = data.aws_route53_zone.aflfootystats_hosted_zone.zone_id
+  name    = data.aws_route53_zone.aflfootystats_hosted_zone.name
+  type    = "A"
+  alias {
+    name                   = aws_alb.footystats_web_alb.dns_name
+    zone_id                = aws_alb.footystats_web_alb.zone_id
+    evaluate_target_health = false
+  }
+}
