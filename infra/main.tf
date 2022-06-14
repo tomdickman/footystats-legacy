@@ -145,6 +145,13 @@ resource "aws_alb" "footystats_web_alb" {
 # Creating a security group for the load balancer:
 resource "aws_security_group" "footystats_web_alb_security_group" {
   ingress {
+    from_port   = 443 # Allowing traffic in from port 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Allowing traffic in from all sources
+  }
+
+  ingress {
     from_port   = 80 # Allowing traffic in from port 80
     to_port     = 80
     protocol    = "tcp"
@@ -173,14 +180,35 @@ resource "aws_lb_target_group" "footystats_web_target_group" {
   }
 }
 
+# Register a forwarding rule for HTTPS from ALB to ECS through target group.
+resource "aws_lb_listener" "footystats_web_https_listener" {
+  load_balancer_arn = aws_alb.footystats_web_alb.arn # Referencing our load balancer
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08" # The default policy
+  certificate_arn   = aws_acm_certificate.footystats_web_cert.arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.footystats_web_target_group.arn # Referencing our target group
+  }
+}
+
+
 # Register a forwarding rule for HTTP from ALB to ECS through target group.
 resource "aws_lb_listener" "footystats_web_http_listener" {
   load_balancer_arn = aws_alb.footystats_web_alb.arn # Referencing our load balancer
   port              = "80"
   protocol          = "HTTP"
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.footystats_web_target_group.arn # Referencing our target group
+    type             = "redirect"
+    redirect {
+      host = "#{host}"
+      path = "/#{path}"
+      query = "#{query}"
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }  
   }
 }
 
