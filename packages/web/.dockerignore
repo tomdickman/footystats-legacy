@@ -1,0 +1,3 @@
+# Prevent Docker copying the local build files
+.next/
+node_modules/

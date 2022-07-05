@@ -4,15 +4,31 @@ services:
     ports:
       - 80:80
     depends_on:
-      - dynamo
+      - database
     environment:
-      - AWS_DYNAMODB_ENDPOINT=http://dynamo:8000
-    volumes:
-      - ./packages/web:/app
-  dynamo:
-    image: amazon/dynamodb-local
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/"
+      - API_URL="http://api:4000"
+  api:
+    build: ./packages/api
     ports:
-      - 8000:8000
+      - 4000:8080
+    depends_on:
+      - database
+    environment:
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGHOST=http://database
+      - PGPORT=5432
+      - PGDATABASE=${POSTGRES_DB}
+  database:
+    image: postgres:14
+    restart: always
+    ports:
+      - 5001:5432
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_DB
+      - POSTGRES_PASSWORD
     volumes:
-      - ./dynamodb-data:/home/dynamodblocal/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./pgdata_afl:/var/lib/postgresql/data
+

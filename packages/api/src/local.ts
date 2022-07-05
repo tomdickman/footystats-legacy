@@ -1,5 +1,5 @@
-import { ApolloServer } from 'apollo-server-lambda'
-
+import { ApolloServer } from 'apollo-server'
+  
 import context from './context';
 import resolvers from './resolvers';
 import typeDefs from './types';
@@ -11,4 +11,7 @@ const server = new ApolloServer({
   csrfPrevention: true,
 });
 
-export const handler = server.createHandler()
+// The `listen` method launches a web server.
+server.listen().then(({ url }) => {
+  console.log(`🚀  Server ready at ${url}`);
+});

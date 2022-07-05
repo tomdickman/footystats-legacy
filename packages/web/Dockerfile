@@ -4,11 +4,9 @@ WORKDIR /app
 
 COPY . .
 
-RUN corepack enable
-RUN yarn
+RUN npm ci
+RUN npm run build
 
 EXPOSE 80
 
-RUN yarn build
-
-CMD ["yarn", "start"]
+CMD ["npm", "start"]
