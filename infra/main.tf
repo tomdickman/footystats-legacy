@@ -21,8 +21,14 @@ provider "aws" {
   region = "ap-southeast-2"
 }
 
-resource "aws_ecr_repository" "footystats_web_ecr_repo" {
+# Repo for storing Web App images
+data "aws_ecr_repository" "footystats_web_ecr_repo" {
   name = "footystats_web_ecr_repo"
+}
+
+# Repo for storing Lambda API images
+data "aws_ecr_repository" "footystats_api_ecr_repo" {
+  name = "footystats_api_ecr_repo"
 }
 
 resource "aws_ecs_cluster" "footystats_cluster" {
@@ -34,7 +40,7 @@ resource "aws_ecs_task_definition" "footystats_web_task" {
   container_definitions = jsonencode([
     {
       "name" : "footystats_web_task",
-      "image" : "${aws_ecr_repository.footystats_web_ecr_repo.repository_url}",
+      "image" : "${data.aws_ecr_repository.footystats_web_ecr_repo.repository_url}",
       "essential" : true,
       "portMappings" : [
         {
@@ -227,7 +233,7 @@ resource "aws_acm_certificate" "footystats_web_cert" {
   }
 }
 
-# Add a records pointing to our cert for TLS
+# Add a record pointing to our cert for TLS
 resource "aws_route53_record" "footystats_web_cert_record" {
   zone_id         = data.aws_route53_zone.aflfootystats_hosted_zone.zone_id
   allow_overwrite = true
@@ -262,4 +268,89 @@ resource "aws_route53_record" "footystats_web_record" {
     zone_id                = aws_alb.footystats_web_alb.zone_id
     evaluate_target_health = false
   }
+}
+
+resource "aws_iam_role" "footystats_api_function_role" {
+  name = "footystats_api_function_role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+# The Apollo Server lambda function
+resource "aws_lambda_function" "footystats_api_function" {
+  function_name = "footystats_api_function"
+  role          = aws_iam_role.footystats_api_function_role.arn
+  image_uri     = data.aws_ecr_repository.footystats_api_ecr_repo.repository_url
+  package_type  = "Image"
+}
+
+# The REST API for handling GraphQL queries
+resource "aws_api_gateway_rest_api" "footystats_api" {
+  name = "footystats_api"
+}
+
+# /graphql resource for conducting GraphQL queries
+resource "aws_api_gateway_resource" "graphql" {
+  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
+  parent_id = aws_api_gateway_rest_api.footystats_api.root_resource_id
+  path_part = "graphql"
+}
+
+# POST method attached to /graphql resource
+resource "aws_api_gateway_method" "post" {
+  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
+  resource_id = aws_api_gateway_resource.graphql.id
+  http_method = "POST"
+  authorization = "None"
+  api_key_required = false
+
+}
+
+# Integration to proxy REST API /graphql endpoint to invoke Apollo Server Lambda
+resource "aws_api_gateway_integration" "footystats_api_integration" {
+  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
+  resource_id = aws_api_gateway_resource.graphql.id
+  http_method = aws_api_gateway_method.post.http_method
+  integration_http_method = "POST"
+  type = "AWS_PROXY"
+  uri = aws_lambda_function.footystats_api_function.invoke_arn
+}
+
+# Deployment of REST API
+resource "aws_api_gateway_deployment" "footystats_api_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.graphql,
+      aws_api_gateway_method.post,
+      aws_api_gateway_integration.footystats_api_integration
+    ]))
+  }
+  depends_on = [
+    aws_api_gateway_integration.footystats_api_integration
+  ]
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Staging deployment of API
+resource "aws_api_gateway_stage" "footystats_api_staging" {
+  deployment_id = aws_api_gateway_deployment.footystats_api_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.footystats_api.id
+  stage_name    = "staging"
 }
