@@ -6,7 +6,7 @@ services:
     depends_on:
       - database
     environment:
-      - API_URL="http://api:4000"
+      - API_URL=http://api:8080
   api:
     build: ./packages/api
     ports:

@@ -20,10 +20,6 @@ provider "aws" {
   region = "ap-southeast-2"
 }
 
-data "aws_caller_identity" "current" {}
-
-data "aws_region" "current" {}
-
 # Repo for storing Web App images
 data "aws_ecr_repository" "footystats_web_ecr_repo" {
   name = "footystats_web_ecr_repo"
@@ -44,6 +40,17 @@ resource "aws_ecs_task_definition" "footystats_web_task" {
     {
       "name" : "footystats_web_task",
       "image" : "${data.aws_ecr_repository.footystats_web_ecr_repo.repository_url}",
+      "environment": [
+        {
+          "name": "API_URL",
+          "value": format(
+            "%s%s/%s",
+            aws_api_gateway_deployment.footystats_api_deployment.invoke_url,
+            aws_api_gateway_stage.footystats_api_prod.stage_name,
+            aws_api_gateway_resource.graphql.path_part
+          )
+        }
+      ]
       "essential" : true,
       "portMappings" : [
         {
@@ -313,6 +320,10 @@ resource "aws_lambda_function" "footystats_api_function" {
 # The REST API for handling GraphQL queries
 resource "aws_api_gateway_rest_api" "footystats_api" {
   name = "footystats_api"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 # /graphql resource for conducting GraphQL queries
@@ -360,13 +371,14 @@ resource "aws_api_gateway_deployment" "footystats_api_deployment" {
   }
 }
 
-# Staging deployment of API
-resource "aws_api_gateway_stage" "footystats_api_staging" {
+# Production deployment of API
+resource "aws_api_gateway_stage" "footystats_api_prod" {
   deployment_id = aws_api_gateway_deployment.footystats_api_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.footystats_api.id
-  stage_name    = "staging"
+  stage_name    = "prod"
 }
 
+# Allows any stage of the REST API to invoke the lambda through the POST method on the /graphql resource
 resource "aws_lambda_permission" "footystats_lambda_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
@@ -374,5 +386,6 @@ resource "aws_lambda_permission" "footystats_lambda_permission" {
   principal     = "apigateway.amazonaws.com"
 
   # More: http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-control-access-using-iam-policies-to-invoke-api.html
-  source_arn = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.footystats_api.id}/*/${aws_api_gateway_method.post.http_method}${aws_api_gateway_resource.graphql.path}"
+  # The `*` denotes a wildcard for the stage part or ARN, so this permission covers all stages.
+  source_arn = "${aws_api_gateway_rest_api.footystats_api.execution_arn}/*/${aws_api_gateway_method.post.http_method}${aws_api_gateway_resource.graphql.path}"
 }
