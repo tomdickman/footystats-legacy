@@ -7,7 +7,7 @@
 
 .editorconfig
 
-# Do not store terraform state
+# Do not store terraform state or variable values
 */.terraform/
 */.terraform.*
 */terraform.*
