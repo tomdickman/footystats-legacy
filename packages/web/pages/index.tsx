@@ -1,12 +1,12 @@
-import type { NextPage } from 'next'
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import type { NextPage } from "next"
+import Head from "next/head"
+import styles from "../styles/Home.module.css"
 
 type HomeProps = {
-  apiUrl: string
+  birthdate: string
 }
 
-const Home: NextPage<HomeProps> = ({ apiUrl }) => {
+const Home: NextPage<HomeProps> = ({ birthdate }) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -28,14 +28,29 @@ const Home: NextPage<HomeProps> = ({ apiUrl }) => {
         >
           Built by Tom Dickman
         </a>
-        <p style={{ "display": "none" }} >API URL: {apiUrl}</p>
+        <p style={{ "display": "none" }} >Birthdate: {birthdate}</p>
       </footer>
     </div>
   )
 }
 
 export const getServerSideProps = async () => {
-  return { props: { apiUrl: process.env.API_URL } }
+  const resp = await fetch(`${process.env.API_URL}`, {
+    headers: {
+      "method": "POST",
+      "Content-Type": "application/json",
+      "body": JSON.stringify({
+        "query": "query($playerId: String!) { player(id: $playerId) { birthdate }}",
+        "variables": {
+          "playerId": "Andrew_Brayshaw"
+        }
+      })
+    }
+  })
+  const data = await resp.json()
+  const birthdate = data.data.player.birthdate
+
+  return { props: { birthdate } }
 };
 
 export default Home
