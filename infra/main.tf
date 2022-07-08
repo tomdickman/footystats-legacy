@@ -9,7 +9,6 @@ terraform {
   required_version = ">= 1.2.0"
 
   backend "s3" {
-    // TODO: configure infrastructure details in env vars.
     bucket         = "footystats-terraform-state" // Pre-existing bucket to store tfstate
     key            = "terraform.tfstate"
     region         = "ap-southeast-2"
@@ -20,6 +19,10 @@ terraform {
 provider "aws" {
   region = "ap-southeast-2"
 }
+
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
 
 # Repo for storing Web App images
 data "aws_ecr_repository" "footystats_web_ecr_repo" {
@@ -294,8 +297,17 @@ EOF
 resource "aws_lambda_function" "footystats_api_function" {
   function_name = "footystats_api_function"
   role          = aws_iam_role.footystats_api_function_role.arn
-  image_uri     = data.aws_ecr_repository.footystats_api_ecr_repo.repository_url
+  image_uri     = "${data.aws_ecr_repository.footystats_api_ecr_repo.repository_url}:latest"
   package_type  = "Image"
+  environment {
+    variables = {
+      PGDATABASE = var.pg_database,
+      PGHOST = var.pg_host,
+      PGPASSWORD = var.pg_password,
+      PGPORT = var.pg_port,
+      PGUSER = var.pg_user
+    }
+  }
 }
 
 # The REST API for handling GraphQL queries
@@ -353,4 +365,14 @@ resource "aws_api_gateway_stage" "footystats_api_staging" {
   deployment_id = aws_api_gateway_deployment.footystats_api_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.footystats_api.id
   stage_name    = "staging"
+}
+
+resource "aws_lambda_permission" "footystats_lambda_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.footystats_api_function.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  # More: http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-control-access-using-iam-policies-to-invoke-api.html
+  source_arn = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.footystats_api.id}/*/${aws_api_gateway_method.post.http_method}${aws_api_gateway_resource.graphql.path}"
 }
