@@ -3,10 +3,10 @@ import Head from "next/head"
 import styles from "../styles/Home.module.css"
 
 type HomeProps = {
-  birthdate: string
+  data: string
 }
 
-const Home: NextPage<HomeProps> = ({ birthdate }) => {
+const Home: NextPage<HomeProps> = ({ data }) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -28,7 +28,7 @@ const Home: NextPage<HomeProps> = ({ birthdate }) => {
         >
           Built by Tom Dickman
         </a>
-        <p style={{ "display": "none" }} >Birthdate: {birthdate}</p>
+        <p style={{ "display": "none" }} >Data: {data}</p>
       </footer>
     </div>
   )
@@ -47,10 +47,10 @@ export const getServerSideProps = async () => {
       })
     }
   })
-  const data = await resp.json()
-  const birthdate = data.data.player.birthdate
+  const data = await resp.text()
+  console.log(data)
 
-  return { props: { birthdate } }
+  return { props: { data } }
 };
 
 export default Home
