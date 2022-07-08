@@ -2,7 +2,11 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 
-const Home: NextPage = () => {
+type HomeProps = {
+  apiUrl: string
+}
+
+const Home: NextPage<HomeProps> = ({ apiUrl }) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -24,9 +28,14 @@ const Home: NextPage = () => {
         >
           Built by Tom Dickman
         </a>
+        <p style={{ "display": "none" }} >API URL: {apiUrl}</p>
       </footer>
     </div>
   )
 }
+
+export const getServerSideProps = async () => {
+  return { props: { apiUrl: process.env.API_URL } }
+};
 
 export default Home
