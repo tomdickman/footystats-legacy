@@ -3,10 +3,11 @@ import Head from "next/head"
 import styles from "../styles/Home.module.css"
 
 type HomeProps = {
-  data: string
+  data: string,
+  apiUrl: string
 }
 
-const Home: NextPage<HomeProps> = ({ data }) => {
+const Home: NextPage<HomeProps> = ({ data, apiUrl }) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -28,7 +29,7 @@ const Home: NextPage<HomeProps> = ({ data }) => {
         >
           Built by Tom Dickman
         </a>
-        <p style={{ "display": "none" }} >Data: {data}</p>
+        <p style={{ "display": "none" }} >Data: {data}, URL: {apiUrl}</p>
       </footer>
     </div>
   )
@@ -50,7 +51,7 @@ export const getServerSideProps = async () => {
   const data = await resp.text()
   console.log(data)
 
-  return { props: { data } }
+  return { props: { data, apiUrl: process.env.API_URL } }
 };
 
 export default Home
