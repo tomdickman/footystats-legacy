@@ -37,8 +37,8 @@ const Home: NextPage<HomeProps> = ({ data, apiUrl }) => {
 
 export const getServerSideProps = async () => {
   const resp = await fetch(`${process.env.API_URL}`, {
+    method: "POST",
     headers: {
-      "method": "POST",
       "Content-Type": "application/json",
       "body": JSON.stringify({
         "query": "query($playerId: String!) { player(id: $playerId) { birthdate }}",
