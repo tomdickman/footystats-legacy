@@ -46,6 +46,7 @@ const typeDefs = gql`
 
   type Query {
     player(id: String!): Player
+    players: [Player!]!
     roundStats(playerid: String!, game: Int!): RoundStats
     hello: String
   }

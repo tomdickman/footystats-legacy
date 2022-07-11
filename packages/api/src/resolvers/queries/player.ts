@@ -10,9 +10,10 @@ const player = async (_parent: any, { id }: PlayerQueryArgs, { db }: Context) =>
   try {
     const response = await db.query('SELECT * FROM player WHERE id = $1', [id])
     result = response.rows[0]
-    // TODO: Move this into resolver so only resolves if 'roundstats' field is requested.
-    const roundStats = await db.query('SELECT * FROM roundstats WHERE playerid = $1', [id])
-    result.roundstats = roundStats.rows
+    result.roundstats = async () => {
+      const roundStatsResp = await db.query('SELECT * FROM roundstats WHERE playerid = $1', [id])
+      return roundStatsResp.rows
+    }
   } catch(error) {
     console.log(error)
   }
