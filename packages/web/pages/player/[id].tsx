@@ -1,14 +1,25 @@
-import { GetStaticPaths, GetStaticProps, NextPage } from "next"
+import { GetServerSideProps, NextPage } from "next"
+import Error from "next/error"
+
 import { Player } from "../../models/Player"
 import { RoundStats } from "../../models/RoundStats"
 
+type PlayerPageProps = {
+  // Next has typed the error statusCode as `never` ¯\_(ツ)_/¯
+  errorCode: never
+  player: Player
+}
 
-const Player: NextPage<Player> = ({ familyname, givenname, roundstats }) => {
+const PlayerPage: NextPage<PlayerPageProps> = ({ player, errorCode }) => {
+  if (errorCode) {
+    return <Error statusCode={errorCode} />
+  }
+
   return (
     <>
-      <h1>{givenname} {familyname}</h1>
+      <h1>{player.givenname} {player.familyname}</h1>
       <ul>
-        {roundstats.map(stats => {
+        {player.roundstats.map(stats => {
           return (
             <li key={stats.game}>{stats.fantasypoints}</li>)
         })}
@@ -17,26 +28,7 @@ const Player: NextPage<Player> = ({ familyname, givenname, roundstats }) => {
   )
 }
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  const res = await fetch(`${process.env.API_URL}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      "query": "query PlayersIds { players { id }}",
-    })
-  })
-
-  const data: { id: string }[] = (await res.json()).data.players
-  const paths = data.map(player => ({
-    params: { id: player.id }
-  }))
-
-  return { paths, fallback: false }
-}
-
-export const getStaticProps: GetStaticProps = async ({ params }) => {
+export const getServerSideProps: GetServerSideProps = async ({ query: { id } }) => {
   const res = await fetch(`${process.env.API_URL}`, {
     method: "POST",
     headers: {
@@ -45,24 +37,20 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
     body: JSON.stringify({
       "query": "query($playerId: String!) { player(id: $playerId) { givenname familyname roundstats { fantasypoints } }}",
       "variables": {
-        "playerId": params?.id
+        "playerId": id
       }
     })
   })
-
   const respJson = await res.json()
-  console.log(respJson)
-  const data: { familyname: string, givenname: string, roundstats: RoundStats[] } = respJson.data.player
-  console.log(data)
+  const player = respJson.data.player
 
   return {
     props: {
-      id: params?.id,
-      familyname: data.familyname,
-      givenname: data.givenname,
-      roundstats: data.roundstats
+      id,
+      player,
+      errorCode: (player !== null) ? false : "404"
     }
   }
 }
 
-export default Player
+export default PlayerPage
