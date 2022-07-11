@@ -352,6 +352,38 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
   policy_arn = aws_iam_policy.footystats_api_lambda_logging_policy.arn
 }
 
+# Settings for API gateway account (to set the cloudwatch role)
+resource "aws_api_gateway_account" "footystats_api_account" {
+  cloudwatch_role_arn = aws_iam_role.footystats_api_logs_role.arn
+}
+
+# Role for API Gateway logging
+resource "aws_iam_role" "footystats_api_logs_role" {
+    name = "footystats_api_logs_role"
+    assume_role_policy = <<EOF
+{
+ "Version": "2012-10-17",
+ "Statement": [
+   {
+     "Sid": "",
+     "Effect": "Allow",
+     "Principal": {
+     "Service": "apigateway.amazonaws.com"
+    },
+    "Action": "sts:AssumeRole"
+  }
+ ]
+}
+  EOF
+  }
+
+# Allow API Gateway logs
+resource "aws_iam_policy_attachment" "footystats_api_logs_policy" {
+  name = "footystats_api_logs_policy"
+  roles = ["${aws_iam_role.footystats_api_logs_role.id}"]
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
 # The REST API for handling GraphQL queries
 resource "aws_api_gateway_rest_api" "footystats_api" {
   name = "footystats_api"
@@ -375,7 +407,17 @@ resource "aws_api_gateway_method" "post" {
   http_method = "POST"
   authorization = "None"
   api_key_required = false
+}
 
+resource "aws_api_gateway_method_settings" "post_settings" {
+  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
+  stage_name  = aws_api_gateway_stage.footystats_api_prod.stage_name
+  method_path = "*/*"
+
+  settings {
+    metrics_enabled = true
+    logging_level   = "INFO"
+  }
 }
 
 # Integration to proxy REST API /graphql endpoint to invoke Apollo Server Lambda
