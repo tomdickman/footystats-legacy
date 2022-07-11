@@ -317,6 +317,41 @@ resource "aws_lambda_function" "footystats_api_function" {
   }
 }
 
+# This is to optionally manage the CloudWatch Log Group for the Lambda Function.
+resource "aws_cloudwatch_log_group" "footystats_api_function" {
+  name              = "/aws/lambda/footystats_api_function"
+  retention_in_days = 14
+}
+
+# See also the following AWS managed policy: AWSLambdaBasicExecutionRole
+resource "aws_iam_policy" "footystats_api_lambda_logging_policy" {
+  name        = "lambda_logging"
+  path        = "/"
+  description = "IAM policy for logging from a lambda"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*",
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_logs" {
+  role       = aws_iam_role.footystats_api_function_role.name
+  policy_arn = aws_iam_policy.footystats_api_lambda_logging_policy.arn
+}
+
 # The REST API for handling GraphQL queries
 resource "aws_api_gateway_rest_api" "footystats_api" {
   name = "footystats_api"
@@ -358,9 +393,9 @@ resource "aws_api_gateway_deployment" "footystats_api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.footystats_api.id
   triggers = {
     redeployment = sha1(jsonencode([
-      aws_api_gateway_resource.graphql,
-      aws_api_gateway_method.post,
-      aws_api_gateway_integration.footystats_api_integration
+      aws_api_gateway_resource.graphql.id,
+      aws_api_gateway_method.post.id,
+      aws_api_gateway_integration.footystats_api_integration.id
     ]))
   }
   depends_on = [
