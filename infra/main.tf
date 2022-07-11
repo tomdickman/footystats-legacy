@@ -40,10 +40,10 @@ resource "aws_ecs_task_definition" "footystats_web_task" {
     {
       "name" : "footystats_web_task",
       "image" : "${data.aws_ecr_repository.footystats_web_ecr_repo.repository_url}",
-      "environment": [
+      "environment" : [
         {
-          "name": "API_URL",
-          "value": format(
+          "name" : "API_URL",
+          "value" : format(
             "%s%s/%s",
             aws_api_gateway_deployment.footystats_api_deployment.invoke_url,
             aws_api_gateway_stage.footystats_api_prod.stage_name,
@@ -77,7 +77,7 @@ resource "aws_ecs_service" "footystats_web_service" {
   desired_count                      = 1   # Setting the number of containers we want deployed
   deployment_minimum_healthy_percent = 0   # Allow for no instance on deployment for roll over, may cause outage (503).
   deployment_maximum_percent         = 200 # Allow for two instances on deployment, to roll over, may cause multiple different versions.
-  force_new_deployment = true
+  force_new_deployment               = true
 
   load_balancer {
     target_group_arn = aws_lb_target_group.footystats_web_target_group.arn # Referencing our target group
@@ -310,10 +310,10 @@ resource "aws_lambda_function" "footystats_api_function" {
   environment {
     variables = {
       PGDATABASE = var.pg_database,
-      PGHOST = var.pg_host,
+      PGHOST     = var.pg_host,
       PGPASSWORD = var.pg_password,
-      PGPORT = var.pg_port,
-      PGUSER = var.pg_user
+      PGPORT     = var.pg_port,
+      PGUSER     = var.pg_user
     }
   }
 }
@@ -360,8 +360,8 @@ resource "aws_api_gateway_account" "footystats_api_account" {
 
 # Role for API Gateway logging
 resource "aws_iam_role" "footystats_api_logs_role" {
-    name = "footystats_api_logs_role"
-    assume_role_policy = <<EOF
+  name               = "footystats_api_logs_role"
+  assume_role_policy = <<EOF
 {
  "Version": "2012-10-17",
  "Statement": [
@@ -376,12 +376,12 @@ resource "aws_iam_role" "footystats_api_logs_role" {
  ]
 }
   EOF
-  }
+}
 
 # Allow API Gateway logs
 resource "aws_iam_policy_attachment" "footystats_api_logs_policy" {
-  name = "footystats_api_logs_policy"
-  roles = ["${aws_iam_role.footystats_api_logs_role.id}"]
+  name       = "footystats_api_logs_policy"
+  roles      = ["${aws_iam_role.footystats_api_logs_role.id}"]
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
@@ -397,16 +397,16 @@ resource "aws_api_gateway_rest_api" "footystats_api" {
 # /graphql resource for conducting GraphQL queries
 resource "aws_api_gateway_resource" "graphql" {
   rest_api_id = aws_api_gateway_rest_api.footystats_api.id
-  parent_id = aws_api_gateway_rest_api.footystats_api.root_resource_id
-  path_part = "graphql"
+  parent_id   = aws_api_gateway_rest_api.footystats_api.root_resource_id
+  path_part   = "graphql"
 }
 
 # POST method attached to /graphql resource
 resource "aws_api_gateway_method" "post" {
-  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
-  resource_id = aws_api_gateway_resource.graphql.id
-  http_method = "POST"
-  authorization = "None"
+  rest_api_id      = aws_api_gateway_rest_api.footystats_api.id
+  resource_id      = aws_api_gateway_resource.graphql.id
+  http_method      = "POST"
+  authorization    = "NONE"
   api_key_required = false
 }
 
@@ -423,12 +423,12 @@ resource "aws_api_gateway_method_settings" "post_settings" {
 
 # Integration to proxy REST API /graphql endpoint to invoke Apollo Server Lambda
 resource "aws_api_gateway_integration" "footystats_api_integration" {
-  rest_api_id = aws_api_gateway_rest_api.footystats_api.id
-  resource_id = aws_api_gateway_resource.graphql.id
-  http_method = aws_api_gateway_method.post.http_method
+  rest_api_id             = aws_api_gateway_rest_api.footystats_api.id
+  resource_id             = aws_api_gateway_resource.graphql.id
+  http_method             = aws_api_gateway_method.post.http_method
   integration_http_method = "POST"
-  type = "AWS_PROXY"
-  uri = aws_lambda_function.footystats_api_function.invoke_arn
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.footystats_api_function.invoke_arn
 }
 
 # Deployment of REST API
