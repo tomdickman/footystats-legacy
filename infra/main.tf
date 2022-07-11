@@ -77,6 +77,7 @@ resource "aws_ecs_service" "footystats_web_service" {
   desired_count                      = 1   # Setting the number of containers we want deployed
   deployment_minimum_healthy_percent = 0   # Allow for no instance on deployment for roll over, may cause outage (503).
   deployment_maximum_percent         = 200 # Allow for two instances on deployment, to roll over, may cause multiple different versions.
+  force_new_deployment = true
 
   load_balancer {
     target_group_arn = aws_lb_target_group.footystats_web_target_group.arn # Referencing our target group
