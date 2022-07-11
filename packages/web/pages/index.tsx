@@ -40,13 +40,13 @@ export const getServerSideProps = async () => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "body": JSON.stringify({
-        "query": "query($playerId: String!) { player(id: $playerId) { birthdate }}",
-        "variables": {
-          "playerId": "Andrew_Brayshaw"
-        }
-      })
-    }
+    },
+    body: JSON.stringify({
+      "query": "query($playerId: String!) { player(id: $playerId) { birthdate }}",
+      "variables": {
+        "playerId": "Andrew_Brayshaw"
+      }
+    })
   })
   const data = await resp.text()
   console.log(data)
