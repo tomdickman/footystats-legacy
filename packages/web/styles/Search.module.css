@@ -1,0 +1,39 @@
+#searchInput {
+  display: block;
+}
+
+.search {
+  padding: 1rem;
+  padding-bottom: 2.5rem;
+}
+
+.search input {
+  font-size: 1rem;
+}
+
+.inputBox {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+}
+
+.inputContainer {
+  height: 1.5rem;
+}
+
+.search legend {
+  font-size: 1.5rem;
+}
+
+.dropdown {
+  border: 1px solid black;
+  background-color: #fff;
+}
+
+.searchResult {
+  padding: 0.25rem;
+}
+
+.hidden {
+  display: none;
+}
