@@ -44,7 +44,13 @@ jobs:
           terraform show tfplan
 
       - name: Apply Terraform
+        id: apply
         if: steps.plan.outcome == 'success'
         run: |
           cd infra
           terraform apply -input=false tfplan
+
+      - name: Force ECS service tasks to update
+        if: steps.apply.outcome == 'success'
+        run: |
+          aws ecs update-service --cluster footystats_cluster --service footystats_web_service --force-new-deployment
