@@ -1,5 +1,7 @@
+import { gql } from "@apollo/client"
 import { GetServerSideProps, NextPage } from "next"
 import Error from "next/error"
+import client from "../../apollo-client"
 
 import { Player } from "../../models/Player"
 import { RoundStats } from "../../models/RoundStats"
@@ -29,20 +31,30 @@ const PlayerPage: NextPage<PlayerPageProps> = ({ player, errorCode }) => {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ query: { id } }) => {
-  const res = await fetch(`${process.env.API_URL}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      "query": "query($playerId: String!) { player(id: $playerId) { givenname familyname roundstats { fantasypoints } }}",
-      "variables": {
-        "playerId": id
+  let player = null
+
+  try {
+    const { data } = await client.query({
+      query: gql`
+        query($playerId: String!) {
+          player(id: $playerId) {
+            givenname
+            familyname
+            roundstats {
+              fantasypoints
+            }
+          }
+        }
+      `,
+      variables: {
+        playerId: id
       }
     })
-  })
-  const respJson = await res.json()
-  const player = respJson.data.player
+    player = data.player
+  } catch(error) {
+    console.log(JSON.stringify(error, null, 2))
+  }
+
 
   return {
     props: {
