@@ -1,13 +1,16 @@
+import { gql } from "@apollo/client"
 import type { NextPage } from "next"
 import Head from "next/head"
+import client from "../apollo-client"
+import Search, { SearchItem } from "../components/Search"
+import { Player } from "../models/Player"
 import styles from "../styles/Home.module.css"
 
 type HomeProps = {
-  data: string,
-  apiUrl: string
+  playerSearchList: SearchItem[]
 }
 
-const Home: NextPage<HomeProps> = ({ data, apiUrl }) => {
+const Home: NextPage<HomeProps> = ({ playerSearchList }) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -18,7 +21,7 @@ const Home: NextPage<HomeProps> = ({ data, apiUrl }) => {
 
       <main className={styles.main}>
         <h1>AFL Footy Stats</h1>
-        <p>Coming soon...</p>
+        <Search items={playerSearchList} title="Search for player" label="Name:" placeholder="Player Name" />
       </main>
 
       <footer className={styles.footer}>
@@ -29,29 +32,37 @@ const Home: NextPage<HomeProps> = ({ data, apiUrl }) => {
         >
           Built by Tom Dickman
         </a>
-        <p style={{ "display": "none" }} >Data: {data}, URL: {apiUrl}</p>
       </footer>
     </div>
   )
 }
 
 export const getServerSideProps = async () => {
-  const resp = await fetch(`${process.env.API_URL}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      "query": "query($playerId: String!) { player(id: $playerId) { birthdate }}",
-      "variables": {
-        "playerId": "Andrew_Brayshaw"
+  let playerSearchList: SearchItem[] = []
+
+  try {
+    const { data } = await client.query({
+      query: gql`
+        query getPlayerNames {
+          players {
+            id
+            givenname
+            familyname
+          }
+        }
+      `
+    })
+    playerSearchList = data.players.map((player: Player) => {
+      return {
+        searchString: `${player.givenname} ${player.familyname}`,
+        link: `/player/${player.id}`
       }
     })
-  })
-  const data = await resp.text()
-  console.log(data)
+  } catch(error) {
+    console.log(JSON.stringify(error, null, 2))
+  }
 
-  return { props: { data, apiUrl: process.env.API_URL } }
+  return { props: { playerSearchList } }
 };
 
 export default Home
