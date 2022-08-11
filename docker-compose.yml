@@ -1,34 +1,32 @@
 services:
   web:
-    build: ./packages/web
+    build:
+      context: ./packages/web
+      dockerfile: Dockerfile.local
     ports:
-      - 80:80
+      - 80:3000
     depends_on:
       - database
     environment:
-      - API_URL=http://api:8080
+      - API_URL=http://api:4000/graphql
   api:
-    build: ./packages/api
+    build:
+      context: ./packages/api
+      dockerfile: Dockerfile.local
     ports:
-      - 4000:8080
+      - 4000:4000
     depends_on:
       - database
-    environment:
-      - PGUSER=${POSTGRES_USER}
-      - PGPASSWORD=${POSTGRES_PASSWORD}
-      - PGHOST=http://database
-      - PGPORT=5432
-      - PGDATABASE=${POSTGRES_DB}
-  database:
-    image: postgres:14
-    restart: always
-    ports:
-      - 5001:5432
-    environment:
-      - POSTGRES_USER
-      - POSTGRES_DB
-      - POSTGRES_PASSWORD
-    volumes:
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-      - ./pgdata_afl:/var/lib/postgresql/data
+  # database:
+  #   image: postgres:14
+  #   restart: always
+  #   ports:
+  #     - 5001:5432
+  #   environment:
+  #     - POSTGRES_USER
+  #     - POSTGRES_DB
+  #     - POSTGRES_PASSWORD
+  #   volumes:
+  #     - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+  #     - ./pgdata_afl:/var/lib/postgresql/data
 
